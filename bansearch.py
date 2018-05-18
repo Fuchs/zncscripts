@@ -79,7 +79,7 @@ class bansearch(znc.Module):
             if self.quiets_done and self.bans_done and self.excepts_done:
                 self.chanstocheck.clear()
                 self.chanmodes.clear()
-                #self.whos.clear()
+                self.whos.clear()
                 self.PutModule("Ban check complete.")
                 self.quiets_done = False; self.bans_done = False; self.excepts_done = False
         for channel, nick in self.chanstocheck.items():
