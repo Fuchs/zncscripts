@@ -86,7 +86,6 @@ class bansearch(znc.Module):
             if chan == channel:
                 user = self.whos[nick]
                 if user[4] == "0":
-                    self.PutModule("User not identified")
                     modes = self.chanmodes[channel]
                     match = re.search("\+[^-]*r", modes)
                     if match:
