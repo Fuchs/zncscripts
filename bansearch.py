@@ -118,7 +118,7 @@ class bansearch(znc.Module):
 
     def printban(self, user, chan, ban, ext, type):
         userban = "{}!{}@{}".format(user[0], user[1], user[2])
-        if user[4] == 0:
+        if user[4] == "0":
             account = "not identified"
         else:
             account = user[4]
