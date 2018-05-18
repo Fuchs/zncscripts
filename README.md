@@ -4,14 +4,22 @@ Scripts and modules and modifications for ZNC  [https://znc.in](https://znc.in "
 bansearch.py
 ------------
 Quickly determine why a user is unable to join/talk in a channel.
-This script takes a nick and channel as an argument, the nick has to be online. 
 
+Note that this script was optimized for freenode with the modes and extbans available there. 
+It might not work or require additional tweaking for other networks.
+Please also note that it is far from perfect and might fail in (constructed) edge cases, 
+but for general consumption it should be fine.
+
+This script takes a nick and channel as an argument, the nick has to be online.
 The channel is then, per default, checked for +b (bans), +q (quiets) 
 and $x, $a and $j [extbans](https://freenode.net/kb/answer/extbans "freenode kb entry on extbans")
 Note that the $j behaviour is more accurate than other solutions, but not fully accurate, 
 as the $j channel will be tested for all modes, not only +b. If someone feels bored enough to fix that: 
 pull requests welcome.
 Modes (currently supported: +b, +q, +e) can be specified as an optional third argument.
+
+It will also check for the special cases of +q $~a (quiet unidentified users) and +r 
+(registered users only channel mode)
 
 The script can be loaded if your znc has python module support with the usual loadmod command, 
 i.e. `/msg *status loadmod bansearch` if placed in a znc mod directory.

@@ -3,6 +3,7 @@
 
 import znc
 import fnmatch
+import re
 
 class bansearch(znc.Module):
 
@@ -10,6 +11,7 @@ class bansearch(znc.Module):
 
     def OnLoad(self, args, message):
         self.chanstocheck = {}
+        self.chanmodes = {}
         self.channelschecked = []
         self.whos = {}
         self.modes = "bq"
@@ -42,6 +44,10 @@ class bansearch(znc.Module):
                     self.quiets_done = True
                     self.getbans(True, message, "q")
                     return znc.HALTCORE
+                elif message[1] == '324':
+                    mchan = message[3]
+                    cmodes = message[4]
+                    self.chanmodes[mchan] = cmodes
         except:
             pass
 
@@ -72,12 +78,19 @@ class bansearch(znc.Module):
         if IsEnd:
             if self.quiets_done and self.bans_done and self.excepts_done:
                 self.chanstocheck.clear()
-                self.whos.clear()                
+                self.chanmodes.clear()
+                self.whos.clear()
                 self.PutModule("Ban check complete.")
                 self.quiets_done = False; self.bans_done = False; self.excepts_done = False
         for channel, nick in self.chanstocheck.items():
             if chan == channel:
                 user = self.whos[nick]
+                if user[4] == "0":
+                    self.PutModule("User not identified")
+                    modes = self.chanmodes[channel]
+                    match = re.search("\+[^-]*r", modes)
+                    if match:
+                        self.PutModule("\x02{}\x02 can not join \x02{}\x02 due to \x02registered only (+r) mode\x02 in place.".format(nick, chan))
                 if '$' not in ban:
                     if fnmatch.fnmatch(user[0], ban[0]) and fnmatch.fnmatch(user[1], ban[1]) and fnmatch.fnmatch(user[2], ban[2]):
                         self.printban(user, chan, ban, False, type)
@@ -96,6 +109,9 @@ class bansearch(znc.Module):
                             self.PutIRC("MODE {} {}".format(jchan, self.modes))
                         else: 
                             self.PutModule("Not checking {} as it was already checked".format(jchan))
+                    elif "$~a" in ban:
+                        if user[4] == "0":
+                            self.printban(user, chan, ban, True, type)
                     elif "$a" in ban: 
                         extban = ban.split(':')[1]
                         if fnmatch.fnmatch(user[4], extban) or fnmatch.fnmatch(user[3], extban):
@@ -103,6 +119,10 @@ class bansearch(znc.Module):
 
     def printban(self, user, chan, ban, ext, type):
         userban = "{}!{}@{}".format(user[0], user[1], user[2])
+        if user[4] == 0:
+            account = "not identified"
+        else:
+            account = user[4]
         if not ext:
             if ban[3]:
                 ban = "{}!{}@{}#{}".format(ban[0], ban[1], ban[2], ban[3])
@@ -110,11 +130,11 @@ class bansearch(znc.Module):
                 ban = "{}!{}@{}".format(ban[0], ban[1], ban[2])
 
         if type == "b":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02banned\x02 in \x02{}\x02 with ban \x02{}\x02.".format(userban, user[4], user[3], chan, ban))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02banned\x02 in \x02{}\x02 with ban \x02{}\x02.".format(userban, account, user[3], chan, ban))
         elif type == "q":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02quieted\x02 in \x02{}\x02 with quiet \x02{}\x02.".format(userban, user[4], user[3], chan, ban))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02quieted\x02 in \x02{}\x02 with quiet \x02{}\x02.".format(userban, account, user[3], chan, ban))
         elif type == "e":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02excepted\x02 in \x02{}\x02 with exception \x02{}\x02.".format(userban, user[4], user[3], chan, ban))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02excepted\x02 in \x02{}\x02 with exception \x02{}\x02.".format(userban, account, user[3], chan, ban))
 
     def splitircuser(self, user):
         if "$x" in user:
@@ -131,6 +151,7 @@ class bansearch(znc.Module):
         self.chanstocheck[chan] = nick
         self.channelschecked.append(chan)
         self.PutIRC("WHO {} %nuhar".format(nick))
+        self.PutIRC("MODE {}".format(chan))
         self.PutIRC("MODE {} {}".format(chan, self.modes))
 
     def OnModCommand(self, command):
@@ -173,3 +194,4 @@ class bansearch(znc.Module):
         help.SetCell("Description", "Display this output")
 
         self.PutModule(help)
+
