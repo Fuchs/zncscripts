@@ -11,7 +11,6 @@ class bansearch(znc.Module):
 
     def OnLoad(self, args, message):
         self.chanstocheck = {}
-        self.chanmodes = {}
         self.channelschecked = []
         self.whos = {}
         self.modes = "bq"
@@ -47,7 +46,13 @@ class bansearch(znc.Module):
                 elif message[1] == '324':
                     mchan = message[3]
                     cmodes = message[4]
-                    self.chanmodes[mchan] = cmodes
+                    nick = self.chanstocheck[mchan]
+                    user = self.whos[nick]
+                    if user[4] == "0":
+                        match = re.search("\+[^-]*r", cmodes)
+                        if match:
+                            self.PutModule("\x02{}\x02 can not join \x02{}\x02 due to \x02registered only (+r) mode\x02 in place.".format(nick, mchan))
+
         except:
             pass
 
@@ -78,18 +83,11 @@ class bansearch(znc.Module):
         if IsEnd:
             if self.quiets_done and self.bans_done and self.excepts_done:
                 self.chanstocheck.clear()
-                self.chanmodes.clear()
                 self.whos.clear()
                 self.PutModule("Ban check complete.")
                 self.quiets_done = False; self.bans_done = False; self.excepts_done = False
         for channel, nick in self.chanstocheck.items():
             if chan == channel:
-                user = self.whos[nick]
-                if user[4] == "0":
-                    modes = self.chanmodes[channel]
-                    match = re.search("\+[^-]*r", modes)
-                    if match:
-                        self.PutModule("\x02{}\x02 can not join \x02{}\x02 due to \x02registered only (+r) mode\x02 in place.".format(nick, chan))
                 if '$' not in ban:
                     if fnmatch.fnmatch(user[0], ban[0]) and fnmatch.fnmatch(user[1], ban[1]) and fnmatch.fnmatch(user[2], ban[2]):
                         self.printban(user, chan, ban, False, type)
