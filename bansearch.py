@@ -52,6 +52,9 @@ class bansearch(znc.Module):
                         match = re.search("\+[^-]*r", cmodes)
                         if match:
                             self.PutModule("\x02{}\x02 can not join \x02{}\x02 due to \x02registered only (+r) mode\x02 in place.".format(nick, mchan))
+                    match = re.search("\+[^-]*i", cmodes)
+                    if match:
+                        self.PutModule("Channel \x02{}\x02 is \x02invite only (+i)\x02, check invexes (/mode {} +I).".format(mchan, mchan))
 
         except:
             pass
@@ -191,4 +194,3 @@ class bansearch(znc.Module):
         help.SetCell("Description", "Display this output")
 
         self.PutModule(help)
-
