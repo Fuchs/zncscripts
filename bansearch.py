@@ -52,6 +52,9 @@ class bansearch(znc.Module):
                         match = re.search("\+[^-]*r", cmodes)
                         if match:
                             self.PutModule("\x02{}\x02 can not join \x02{}\x02 due to \x02registered only (+r) mode\x02 in place.".format(nick, mchan))
+                    match = re.search("\+[^-]*i", cmodes)
+                    if match:
+                        self.PutModule("Channel \x02{}\x02 is \x02invite only (+i)\x02, check invexes (/mode {} +I, requires op privileges).".format(mchan, mchan))
 
         except:
             pass
@@ -98,6 +101,8 @@ class bansearch(znc.Module):
                             self.printban(user, chan, ban, True, type)
                     elif "$j" in ban:
                         jchan = ban.split(':')[1]
+                        if "$" in jchan:
+                            jchan = jchan.split('$')[0]
                         if not jchan in self.channelschecked:
                             self.PutModule("Checking for bans on {} in {} as well due to $j".format(nick, jchan))
                             self.channelschecked.append(jchan)
