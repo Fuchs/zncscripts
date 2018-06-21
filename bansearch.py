@@ -91,6 +91,7 @@ class bansearch(znc.Module):
                 self.quiets_done = False; self.bans_done = False; self.excepts_done = False
         for channel, nick in self.chanstocheck.items():
             if chan == channel:
+                user = self.whos[nick]
                 if '$' not in ban:
                     if fnmatch.fnmatch(user[0], ban[0]) and fnmatch.fnmatch(user[1], ban[1]) and fnmatch.fnmatch(user[2], ban[2]):
                         self.printban(user, chan, ban, False, type)
