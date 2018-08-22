@@ -84,7 +84,7 @@ class bansearch(znc.Module):
         if IsEnd:
             if self.quiets_done and self.bans_done and self.excepts_done:
                 self.chanstocheck.pop(chan, None)
-                self.PutModule("Ban check complete.")
+                self.PutModule("Ban check in {} complete.".format(chan))
         for channel, nick in self.chanstocheck.items():
             if chan == channel:
                 user = self.whos[nick]
