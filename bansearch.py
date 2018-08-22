@@ -55,7 +55,6 @@ class bansearch(znc.Module):
                     match = re.search("\+[^-]*i", cmodes)
                     if match:
                         self.PutModule("Channel \x02{}\x02 is \x02invite only (+i)\x02, check invexes (/mode {} +I).".format(mchan, mchan))
-
         except:
             pass
 
@@ -73,7 +72,6 @@ class bansearch(znc.Module):
             ban = message[4]
         elif type == "q":
             ban = message[5]
-
         if IsEnd:
             self.check(IsEnd, message[3], None, type)
         elif "$x" in ban or "$" not in ban:
@@ -85,10 +83,8 @@ class bansearch(znc.Module):
     def check(self, IsEnd, chan, ban, type):
         if IsEnd:
             if self.quiets_done and self.bans_done and self.excepts_done:
-                self.chanstocheck.clear()
-                self.whos.clear()
+                self.chanstocheck.pop(chan, None)
                 self.PutModule("Ban check complete.")
-                self.quiets_done = False; self.bans_done = False; self.excepts_done = False
         for channel, nick in self.chanstocheck.items():
             if chan == channel:
                 user = self.whos[nick]
@@ -108,7 +104,6 @@ class bansearch(znc.Module):
                             self.PutModule("Checking for bans on {} in {} as well due to $j".format(nick, jchan))
                             self.channelschecked.append(jchan)
                             self.chanstocheck[jchan] = nick
-                            self.PutIRC("WHO {} %nuhar".format(nick))
                             self.PutIRC("MODE {} {}".format(jchan, self.modes))
                         else: 
                             self.PutModule("Not checking {} as it was already checked".format(jchan))
@@ -159,6 +154,8 @@ class bansearch(znc.Module):
 
     def OnModCommand(self, command):
         self.channelschecked = []
+        self.chanstocheck = {}
+        self.whos.clear()
         commands = command.lower().split()
         if len(commands) > 3:
             self.modes = commands[3]
@@ -197,3 +194,5 @@ class bansearch(znc.Module):
         help.SetCell("Description", "Display this output")
 
         self.PutModule(help)
+
+
