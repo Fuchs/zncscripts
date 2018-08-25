@@ -1,4 +1,4 @@
-# Licensed under the MIT license, see https://github.com/Fuchs/zncscripts/blob/master/LICENSE
+ Licensed under the MIT license, see https://github.com/Fuchs/zncscripts/blob/master/LICENSE
 # Based on the work of and cooperation with MuffinMedic, https://github.com/MuffinMedic
 
 import znc
@@ -80,14 +80,14 @@ class bansearch(znc.Module):
     def check(self, IsEnd, chan, ban, type):
         if IsEnd:
             if type == "b":
-                self.bansDone[chan] = true
+                self.bansDone[chan] = True
             elif type == "q":
-                self.quietsDone[chan] = true
+                self.quietsDone[chan] = True
             elif type == "e":
-                self.exceptsDone[chan] = true
+                self.exceptsDone[chan] = True
             if self.quietsDone[chan] and self.bansDone[chan] and self.exceptsDone[chan]:
                 self.chanstocheck.pop(chan, None)
-                self.PutModule("Ban check in {} complete.".format(chan))
+                self.PutModule("Check in {} complete.".format(chan))
         for channel, nick in self.chanstocheck.items():
             if chan == channel:
                 user = self.whos[nick]
@@ -101,7 +101,7 @@ class bansearch(znc.Module):
                             self.printban(user, chan, ban, True, type)
                     elif "$j" in ban:
                         jchan = ban.split(':')[1]
-                        if "$" in jchan:
+                        if "$" in jchan: 
                             jchan = jchan.split('$')[0]
                         if not jchan in self.channelschecked:
                             self.PutModule("Checking for bans on {} in {} as well due to $j".format(nick, jchan))
@@ -110,12 +110,12 @@ class bansearch(znc.Module):
                             if "q" not in self.modes:
                                 self.quietsDone[jchan] = True
                             if "b" not in self.modes:
-                                self.bansDone[chan] = True
+                                self.bansDone[jchan] = True
                             if "e" not in self.modes:
-                                self.exceptsDone[chan] = True
+                                self.exceptsDone[jchan] = True
                             self.PutIRC("MODE {} {}".format(jchan, self.modes))
-                        else: 
-                            self.PutModule("Not checking {} as it was already checked".format(jchan))
+                        else:
+                            self.PutModule("Not checking {} again as it was already checked".format(jchan))
                     elif "$~a" in ban:
                         if user[4] == "0":
                             self.printban(user, chan, ban, True, type)
