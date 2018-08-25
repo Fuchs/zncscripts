@@ -14,7 +14,7 @@ class bansearch(znc.Module):
         self.channelschecked = []
         self.whos = {}
         self.modes = "bq"
-        self.quiets_done = False; self.bans_done = False; self.excepts_done= False
+        self.quietsDone = {}; self.bansDone = {}; self.exceptsDone = {}
         return True
 
     def OnRaw(self, message):
@@ -27,20 +27,17 @@ class bansearch(znc.Module):
                     self.getbans(False, message, "e")
                     return znc.HALTCORE
                 elif message[1] == '349':
-                    self.excepts_done = True
                     self.getbans(True, message, "e")
                 elif message[1] == '367':
                     self.getbans(False, message, "b")
                     return znc.HALTCORE
                 elif message[1] == '368':
-                    self.bans_done = True
                     self.getbans(True, message, "b")
                     return znc.HALTCORE
                 elif message[1] == '728':
                     self.getbans(False, message, "q")
                     return znc.HALTCORE
                 elif message[1] == '729':
-                    self.quiets_done = True
                     self.getbans(True, message, "q")
                     return znc.HALTCORE
                 elif message[1] == '324':
@@ -82,7 +79,13 @@ class bansearch(znc.Module):
 
     def check(self, IsEnd, chan, ban, type):
         if IsEnd:
-            if self.quiets_done and self.bans_done and self.excepts_done:
+            if type == "b":
+                self.bansDone[chan] = true
+            elif type == "q":
+                self.quietsDone[chan] = true
+            elif type == "e":
+                self.exceptsDone[chan] = true
+            if self.quietsDone[chan] and self.bansDone[chan] and self.exceptsDone[chan]:
                 self.chanstocheck.pop(chan, None)
                 self.PutModule("Ban check in {} complete.".format(chan))
         for channel, nick in self.chanstocheck.items():
@@ -104,6 +107,12 @@ class bansearch(znc.Module):
                             self.PutModule("Checking for bans on {} in {} as well due to $j".format(nick, jchan))
                             self.channelschecked.append(jchan)
                             self.chanstocheck[jchan] = nick
+                            if "q" not in self.modes:
+                                self.quietsDone[jchan] = True
+                            if "b" not in self.modes:
+                                self.bansDone[chan] = True
+                            if "e" not in self.modes:
+                                self.exceptsDone[chan] = True
                             self.PutIRC("MODE {} {}".format(jchan, self.modes))
                         else: 
                             self.PutModule("Not checking {} as it was already checked".format(jchan))
@@ -159,21 +168,24 @@ class bansearch(znc.Module):
         commands = command.lower().split()
         if len(commands) > 3:
             self.modes = commands[3]
-        if "q" not in self.modes:
-            self.quiets_done = True
-        if "b" not in self.modes: 
-            self.bans_done = True
-        if "e" not in self.modes:
-            self.excepts_done= True
 
         if commands[0] == "check":
             try:
                 if "#" in commands[1]:
-                    self.getbaninfo(commands[2], commands[1])
+                    chan = commands[1]
+                    nick = commands[2]
                 elif "#" in commands[2]:
-                    self.getbaninfo(commands[1], commands[2])
+                    chan = commands[2]
+                    nick = commands[1]
                 else:
                     self.PutModule("Syntax: check <user> <#channel> [modes]")
+                if "q" not in self.modes:
+                    self.quietsDone[chan] = True
+                if "b" not in self.modes:
+                    self.bansDone[chan] = True
+                if "e" not in self.modes:
+                    self.exceptsDone[chan] = True
+                self.getbaninfo(nick, chan)
             except:
                 self.PutModule("Syntax: check <user> <#channel> [modes]")
         else:
