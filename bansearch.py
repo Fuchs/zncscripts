@@ -61,7 +61,7 @@ class bansearch(znc.Module):
             nick = message[5]
             ident = message[3]
             host = message[4]
-            gecos = ' '.join(message).rsplit(':', 1)[1]
+            gecos = ' '.join(message[7:])[1:]
             account = message[6]
             self.whos[nick] = (nick, ident, host, gecos, account)
 
