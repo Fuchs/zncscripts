@@ -1,4 +1,4 @@
- Licensed under the MIT license, see https://github.com/Fuchs/zncscripts/blob/master/LICENSE
+# Licensed under the MIT license, see https://github.com/Fuchs/zncscripts/blob/master/LICENSE
 # Based on the work of and cooperation with MuffinMedic, https://github.com/MuffinMedic
 
 import znc
@@ -15,6 +15,7 @@ class bansearch(znc.Module):
         self.whos = {}
         self.modes = "bq"
         self.quietsDone = {}; self.bansDone = {}; self.exceptsDone = {}
+        self.globpattern = re.compile("([\[\]])")
         return True
 
     def OnRaw(self, message):
@@ -92,12 +93,12 @@ class bansearch(znc.Module):
             if chan == channel:
                 user = self.whos[nick]
                 if '$' not in ban:
-                    if fnmatch.fnmatch(user[0], ban[0]) and fnmatch.fnmatch(user[1], ban[1]) and fnmatch.fnmatch(user[2], ban[2]):
+                    if self.globmatch(user[0], ban[0]) and self.globmatch(user[1], ban[1]) and self.globmatch(user[2], ban[2]):
                         self.printban(user, chan, ban, False, type)
                 else:
                     if "$x" in ban:
                         ban = self.splitircuser(ban)
-                        if fnmatch.fnmatch(user[0], ban[0]) and fnmatch.fnmatch(user[1], ban[1]) and fnmatch.fnmatch(user[2], ban[2]) and fnmatch.fnmatch(user[3], ban[3]):
+                        if self.globmatch(user[0], ban[0]) and self.globmatch(user[1], ban[1]) and self.globmatch(user[2], ban[2]) and self.globmatch(user[3], ban[3]):
                             self.printban(user, chan, ban, True, type)
                     elif "$j" in ban:
                         jchan = ban.split(':')[1]
@@ -119,9 +120,9 @@ class bansearch(znc.Module):
                     elif "$~a" in ban:
                         if user[4] == "0":
                             self.printban(user, chan, ban, True, type)
-                    elif "$a" in ban: 
+                    elif "$a" in ban:
                         extban = ban.split(':')[1]
-                        if fnmatch.fnmatch(user[4], extban) or fnmatch.fnmatch(user[3], extban):
+                        if self.globmatch(user[4], extban):
                             self.printban(user, chan, ban, True, type)
 
     def printban(self, user, chan, ban, ext, type):
@@ -207,4 +208,7 @@ class bansearch(znc.Module):
 
         self.PutModule(help)
 
+    def globmatch(self, string, compare):
+        escaped = self.globpattern.sub("[\g<1>]", compare)
+        return fnmatch.fnmatch(string, escaped)
 
