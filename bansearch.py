@@ -72,8 +72,8 @@ class bansearch(znc.Module):
             ban = message[5]
         if IsEnd:
             self.check(IsEnd, message[3], None, type)
-        elif "$x" in ban or "$" not in ban:
-            nuh = self.splitircuser(ban)
+        elif not ban.startswith('$'):
+            nuh = self.splitircban(ban)
             self.check(IsEnd, message[3], nuh, type)
         elif "$" in ban:
             self.check(IsEnd, message[3], ban, type)
@@ -97,9 +97,10 @@ class bansearch(znc.Module):
                         self.printban(user, chan, ban, False, type)
                 else:
                     if "$x" in ban:
+                        borig = ban
                         ban = self.splitircuser(ban)
                         if self.globmatch(user[0], ban[0]) and self.globmatch(user[1], ban[1]) and self.globmatch(user[2], ban[2]) and self.globmatch(user[3], ban[3]):
-                            self.printban(user, chan, ban, True, type)
+                            self.printban(user, chan, borig, True, type)
                     elif "$j" in ban:
                         jchan = ban.split(':')[1]
                         if "$" in jchan: 
@@ -133,7 +134,7 @@ class bansearch(znc.Module):
             account = user[4]
         if not ext:
             if ban[3]:
-                ban = "{}!{}@{}#{}".format(ban[0], ban[1], ban[2], ban[3])
+                ban = "{}!{}@{}${}".format(ban[0], ban[1], ban[2], ban[3])
             else:
                 ban = "{}!{}@{}".format(ban[0], ban[1], ban[2])
 
@@ -154,6 +155,18 @@ class bansearch(znc.Module):
         ident = user.split('!')[1].split('@')[0]
         host = user.split('@')[1].split('#')[0]
         return (nick, ident, host, gecos)
+
+    def splitircban(self, ban):
+        if "$" in ban:
+            user = ban.split('$')[0]
+            forward = ban.split('$')[1]
+        else:
+            forward = None
+        nick = ban.split('!')[0]
+        ident = ban.split('!')[1].split('@')[0]
+        host = ban.split('@')[1].split('$')[0]
+        return (nick, ident, host, forward)
+
 
     def getbaninfo(self, nick, chan):
         self.chanstocheck[chan] = nick
@@ -211,4 +224,3 @@ class bansearch(znc.Module):
     def globmatch(self, string, compare):
         escaped = self.globpattern.sub("[\g<1>]", compare)
         return fnmatch.fnmatch(string, escaped)
-
