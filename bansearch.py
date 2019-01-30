@@ -4,6 +4,7 @@
 import znc
 import fnmatch
 import re
+import time
 
 class bansearch(znc.Module):
 
@@ -66,19 +67,24 @@ class bansearch(znc.Module):
             self.whos[nick] = (nick, ident, host, gecos, account)
 
     def getbans(self, IsEnd, message, type):
+        channel = message[3]
+
         if type == "b" or type == "e":
             ban = message[4]
+            stamp = message[6]
         elif type == "q":
             ban = message[5]
+            stamp = message[7]
+
         if IsEnd:
-            self.check(IsEnd, message[3], None, type)
+            self.check(IsEnd, channel, None, type, None)
         elif not ban.startswith('$'):
             nuh = self.splitircban(ban)
-            self.check(IsEnd, message[3], nuh, type)
+            self.check(IsEnd, channel, nuh, type, stamp)
         elif "$" in ban:
-            self.check(IsEnd, message[3], ban, type)
+            self.check(IsEnd, channel, ban, type, stamp)
 
-    def check(self, IsEnd, chan, ban, type):
+    def check(self, IsEnd, chan, ban, type, stamp):
         if IsEnd:
             if type == "b":
                 self.bansDone[chan] = True
@@ -94,13 +100,13 @@ class bansearch(znc.Module):
                 user = self.whos[nick]
                 if '$' not in ban:
                     if self.globmatch(user[0], ban[0]) and self.globmatch(user[1], ban[1]) and self.globmatch(user[2], ban[2]):
-                        self.printban(user, chan, ban, False, type)
+                        self.printban(user, chan, ban, False, type, stamp)
                 else:
                     if "$x" in ban:
                         borig = ban
                         ban = self.splitircuser(ban)
                         if self.globmatch(user[0], ban[0]) and self.globmatch(user[1], ban[1]) and self.globmatch(user[2], ban[2]) and self.globmatch(user[3], ban[3]):
-                            self.printban(user, chan, borig, True, type)
+                            self.printban(user, chan, borig, True, type, stamp)
                     elif "$j" in ban:
                         jchan = ban.split(':')[1]
                         if "$" in jchan: 
@@ -120,13 +126,40 @@ class bansearch(znc.Module):
                             self.PutModule("Not checking {} again as it was already checked".format(jchan))
                     elif "$~a" in ban:
                         if user[4] == "0":
-                            self.printban(user, chan, ban, True, type)
+                            self.printban(user, chan, ban, True, type, stamp)
                     elif "$a" in ban:
                         extban = ban.split(':')[1]
                         if self.globmatch(user[4], extban):
-                            self.printban(user, chan, ban, True, type)
+                            self.printban(user, chan, ban, True, type, stamp)
 
-    def printban(self, user, chan, ban, ext, type):
+    def formatAge(self, when):
+        now = time.time()
+        elapsed = int(now) - int(when)
+
+        # minutes
+        elapsed = elapsed // 60
+
+        if elapsed < 1:
+            return "seconds"
+        if elapsed == 1:
+            return "1 minute"
+        if elapsed < 60:
+            return str(elapsed) + " minutes"
+
+        # hours
+        elapsed = elapsed // 60
+        if elapsed == 1:
+            return "1 hour"
+        if elapsed < 24:
+            return str(elapsed) + " hours"
+
+        #days
+        elapsed = elapsed // 24
+        if elapsed == 1:
+            return "1 day"
+        return str(elapsed) + " days"
+
+    def printban(self, user, chan, ban, ext, type, stamp):
         userban = "{}!{}@{}".format(user[0], user[1], user[2])
         if user[4] == "0":
             account = "not identified"
@@ -138,12 +171,14 @@ class bansearch(znc.Module):
             else:
                 ban = "{}!{}@{}".format(ban[0], ban[1], ban[2])
 
+        stamp = self.formatAge(stamp)
+
         if type == "b":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02banned\x02 in \x02{}\x02 with ban \x02{}\x02.".format(userban, account, user[3], chan, ban))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02banned\x02 in \x02{}\x02 with ban \x02{}\x02 (\x02{}\x02 ago).".format(userban, account, user[3], chan, ban, stamp))
         elif type == "q":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02quieted\x02 in \x02{}\x02 with quiet \x02{}\x02.".format(userban, account, user[3], chan, ban))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02quieted\x02 in \x02{}\x02 with quiet \x02{}\x02 (\x02{}\x02 ago).".format(userban, account, user[3], chan, ban, stamp))
         elif type == "e":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02excepted\x02 in \x02{}\x02 with exception \x02{}\x02.".format(userban, account, user[3], chan, ban))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02excepted\x02 in \x02{}\x02 with exception \x02{}\x02 (\x02{}\x02 ago).".format(userban, account, user[3], chan, ban, stamp))
 
     def splitircuser(self, user):
         if "$x" in user:
