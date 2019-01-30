@@ -206,7 +206,9 @@ class bansearch(znc.Module):
             self.help()
 
     def help(self):
-        help = znc.CTable(250)
+        # For pre 1.7.* znc use the below line for prettier output
+        # help = znc.CTable(250)
+        help = znc.CTable()
         help.AddColumn("Command")
         help.AddColumn("Arguments")
         help.AddColumn("Description")
