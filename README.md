@@ -54,3 +54,17 @@ Example output:
 ‎<‎*bansearch‎>‎ 01020304@gateway/web/cgi-irc/kiwiirc.com/ip.1.2.3.4  (account: Fuchs, GECOS: //kiwiirc.com] development release) banned in ##programming with ban *!*@gateway/web/cgi-irc/*.
 ‎<‎*bansearch‎>‎ Ban check complete.
 ```
+
+Settings: 
+
+bansearch now allows to change some settings, mostly regarding the format ouf the output. Do 
+
+`/msg *bansearch settings`
+
+to get a list of them, including a description and allowed values.
+
+Settings can be changed with 
+
+`/msg *bansearch set settingName Value`
+
+Note that setting names and values are not case sensitive.

@@ -5,12 +5,14 @@ import znc
 import fnmatch
 import re
 import time
+from datetime import datetime
 
 class bansearch(znc.Module):
 
     module_types = [znc.CModInfo.NetworkModule]
 
     def OnLoad(self, args, message):
+        self.loadSettings()
         self.chanstocheck = {}
         self.channelschecked = []
         self.whos = {}
@@ -30,6 +32,7 @@ class bansearch(znc.Module):
                     return znc.HALTCORE
                 elif message[1] == '349':
                     self.getbans(True, message, "e")
+                    return znc.HALTCORE
                 elif message[1] == '367':
                     self.getbans(False, message, "b")
                     return znc.HALTCORE
@@ -68,23 +71,24 @@ class bansearch(znc.Module):
 
     def getbans(self, IsEnd, message, type):
         channel = message[3]
-
         if type == "b" or type == "e":
             ban = message[4]
+            setter = message[5]
             stamp = message[6]
         elif type == "q":
             ban = message[5]
+            setter = message[6]
             stamp = message[7]
 
         if IsEnd:
-            self.check(IsEnd, channel, None, type, None)
+            self.check(IsEnd, channel, None, type, None, None)
         elif not ban.startswith('$'):
             nuh = self.splitircban(ban)
-            self.check(IsEnd, channel, nuh, type, stamp)
+            self.check(IsEnd, channel, nuh, type, stamp, setter)
         elif "$" in ban:
-            self.check(IsEnd, channel, ban, type, stamp)
+            self.check(IsEnd, channel, ban, type, stamp, setter)
 
-    def check(self, IsEnd, chan, ban, type, stamp):
+    def check(self, IsEnd, chan, ban, type, stamp, setter):
         if IsEnd:
             if type == "b":
                 self.bansDone[chan] = True
@@ -100,13 +104,13 @@ class bansearch(znc.Module):
                 user = self.whos[nick]
                 if '$' not in ban:
                     if self.globmatch(user[0], ban[0]) and self.globmatch(user[1], ban[1]) and self.globmatch(user[2], ban[2]):
-                        self.printban(user, chan, ban, False, type, stamp)
+                        self.printban(user, chan, ban, False, type, stamp, setter)
                 else:
                     if "$x" in ban:
                         borig = ban
                         ban = self.splitircuser(ban)
                         if self.globmatch(user[0], ban[0]) and self.globmatch(user[1], ban[1]) and self.globmatch(user[2], ban[2]) and self.globmatch(user[3], ban[3]):
-                            self.printban(user, chan, borig, True, type, stamp)
+                            self.printban(user, chan, borig, True, type, stamp, setter)
                     elif "$j" in ban:
                         jchan = ban.split(':')[1]
                         if "$" in jchan: 
@@ -126,13 +130,17 @@ class bansearch(znc.Module):
                             self.PutModule("Not checking {} again as it was already checked".format(jchan))
                     elif "$~a" in ban:
                         if user[4] == "0":
-                            self.printban(user, chan, ban, True, type, stamp)
+                            self.printban(user, chan, ban, True, type, stamp, setter)
                     elif "$a" in ban:
                         extban = ban.split(':')[1]
                         if self.globmatch(user[4], extban):
-                            self.printban(user, chan, ban, True, type, stamp)
+                            self.printban(user, chan, ban, True, type, stamp, setter)
 
-    def formatAge(self, when):
+    def formatTimestamp(self, when):
+        ts = int(when)
+        return datetime.utcfromtimestamp(ts).strftime(self.timeStampFormat)
+        
+    def formatAgo(self, when):
         now = time.time()
         elapsed = int(now) - int(when)
 
@@ -140,26 +148,26 @@ class bansearch(znc.Module):
         elapsed = elapsed // 60
 
         if elapsed < 1:
-            return "seconds"
+            return "(a few seconds ago)"
         if elapsed == 1:
-            return "1 minute"
+            return "(1 minute ago)"
         if elapsed < 60:
-            return str(elapsed) + " minutes"
+            return "(" + str(elapsed) + " minutes ago)"
 
         # hours
         elapsed = elapsed // 60
         if elapsed == 1:
-            return "1 hour"
+            return "(1 hour ago)"
         if elapsed < 24:
-            return str(elapsed) + " hours"
+            return "(" + str(elapsed) + " hours ago)"
 
         #days
         elapsed = elapsed // 24
         if elapsed == 1:
             return "1 day"
-        return str(elapsed) + " days"
+        return "(" + str(elapsed) + " days ago)"
 
-    def printban(self, user, chan, ban, ext, type, stamp):
+    def printban(self, user, chan, ban, ext, type, stamp, setter):
         userban = "{}!{}@{}".format(user[0], user[1], user[2])
         if user[4] == "0":
             account = "not identified"
@@ -171,14 +179,24 @@ class bansearch(znc.Module):
             else:
                 ban = "{}!{}@{}".format(ban[0], ban[1], ban[2])
 
-        stamp = self.formatAge(stamp)
+        ssetter = ""
+        if self.showSetter:
+            ssetter = " by \x02" + setter + "\x02"
+
+        tstamp = ""
+        if self.showTimeStamp:
+            tstamp = " at \x02" + self.formatTimestamp(stamp) + "\x02"
+
+        ago = ""
+        if self.showTimeAgo:
+            ago = " \x02" + self.formatAgo(stamp) + "\x02"
 
         if type == "b":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02banned\x02 in \x02{}\x02 with ban \x02{}\x02 (\x02{}\x02 ago).".format(userban, account, user[3], chan, ban, stamp))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02banned\x02 in \x02{}\x02 with \x02{}\x02{}{}{}.".format(userban, account, user[3], chan, ban, ssetter, tstamp, ago))
         elif type == "q":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02quieted\x02 in \x02{}\x02 with quiet \x02{}\x02 (\x02{}\x02 ago).".format(userban, account, user[3], chan, ban, stamp))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02quieted\x02 in \x02{}\x02 with \x02{}\x02{}{}{}.".format(userban, account, user[3], chan, ban, ssetter, tstamp, ago))
         elif type == "e":
-            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02excepted\x02 in \x02{}\x02 with exception \x02{}\x02 (\x02{}\x02 ago).".format(userban, account, user[3], chan, ban, stamp))
+            self.PutModule("\x02{}\x02 (account: {}, GECOS: {}) \x02excepted\x02 in \x02{}\x02 with \x02{}\x02{}{}{}.".format(userban, account, user[3], chan, ban, ssetter, tstamp, ago))
 
     def splitircuser(self, user):
         if "$x" in user:
@@ -213,6 +231,9 @@ class bansearch(znc.Module):
     def OnModCommand(self, command):
         self.channelschecked = []
         self.chanstocheck = {}
+        self.quietsDone = {}
+        self.bansDone = {}
+        self.exceptsDone = {}
         self.whos.clear()
         commands = command.lower().split()
         if len(commands) > 3:
@@ -237,6 +258,18 @@ class bansearch(znc.Module):
                 self.getbaninfo(nick, chan)
             except:
                 self.PutModule("Syntax: check <user> <#channel> [modes]")
+        elif commands[0] == "set":
+            key = None
+            value = None
+            if len(commands) > 1:
+                key = commands[1] 
+            if len(commands) > 2: 
+                value = commands[2]
+            ret = self.setSetting(key, value)
+            self.PutModule(ret)
+            self.loadSettings()
+        elif commands[0] == "settings":
+            self.showSettings()
         else:
             self.help()
 
@@ -252,12 +285,95 @@ class bansearch(znc.Module):
         help.SetCell("Arguments", "<user> <#channel> [modes]")
         help.SetCell("Description", "Checks to see if an online user is banned in a channel, optionally set modes (default: bq)")
         help.AddRow()
+        help.SetCell("Command", "set")
+        help.SetCell("Arguments", "<key> <value>")
+        help.SetCell("Description", "Sets settings, for available settings and their values see \"settings\"")
+        help.AddRow()
+        help.SetCell("Command", "settings")
+        help.SetCell("Arguments", "")
+        help.SetCell("Description", "Displays settings and their value")
+        help.AddRow()
         help.SetCell("Command", "help")
         help.SetCell("Arguments", "")
         help.SetCell("Description", "Display this output")
 
         self.PutModule(help)
 
+    def setSetting(self, key, value=None):
+        if not key or not value: 
+            self.PutModule("Syntax: set <key> <value>, e.g. set showTimestamp True")
+        key = key.lower()
+        if key in ("showsetter", "showtimeago", "showtimestamp"): 
+            if value and self.getBool(value):
+                self.nv[key] = "True"
+                return "\x02{option}\x02 value set to \x02{setting}\x02".format(option=key, setting="True")
+            elif value and not self.getBool(value):
+                self.nv[key] = "False"
+                return "\x02{option}\x02 value set to \x02{setting}\x02".format(option=key, setting="False")
+        elif key == "timeStampFormat":
+            ts = int("3152435682")
+            try:
+                datetime.utcfromtimestamp(ts).strftime(value)
+                self.nv[key] = value
+                return "{option} option set to \x02{setting}\x02".format(option=key, setting=value)
+            except:
+                return "Timestamp format not accepted, check for syntax errors"
+        else:
+            return "Invalid option. Options are 'showsetter', 'showtimeago', 'showtimestamp' and 'timestampformat'."
+    
+    def showSettings(self):
+        settings = znc.CTable()
+        settings.AddColumn("Setting")
+        settings.AddColumn("Value")
+        settings.AddColumn("Description")
+        settings.AddRow()
+        settings.SetCell("Setting", "showSetter")
+        settings.SetCell("Value", str(self.showSetter))
+        settings.SetCell("Description", "Show who did set that mode, values are True or False.")
+        settings.AddRow()
+        settings.SetCell("Setting", "showTimeAgo")
+        settings.SetCell("Value", str(self.showTimeAgo))
+        settings.SetCell("Description", "Show how long since the mode has been set, values are True or False.")
+        settings.AddRow()
+        settings.SetCell("Setting", "showTimestamp")
+        settings.SetCell("Value", str(self.showTimeStamp))
+        settings.SetCell("Description", "Show the time and date at which the mode was set, values are True or False.")
+        settings.AddRow()
+        settings.SetCell("Setting", "TimestampFormat")
+        settings.SetCell("Value", str(self.timeStampFormat))
+        settings.SetCell("Description", "Format for the timestamp of \"showtimestamp\", values are valid strftime formattings.")
+        self.PutModule(settings)
+    
+    def loadSettings(self):
+        try: 
+            if 'showsetter' in self.nv:
+                self.showSetter = self.getBool(self.nv['showsetter'])
+            else:
+                self.showSetter = False
+                self.nv['showsetter'] = "False"
+            if 'showtimeago' in self.nv:
+                self.showTimeAgo = self.getBool(self.nv['showtimeago'])
+            else:
+                self.showTimeAgo = False
+                self.nv['showtimeago'] = "False"
+            if 'showtimestamp' in self.nv:
+                self.showTimeStamp = self.getBool(self.nv['showtimestamp'])
+            else:
+                self.showTimeStamp = False
+                self.nv['showtimestamp'] = "False"
+            if 'timestampformat' in self.nv:
+                self.timeStampFormat = self.nv['timestampformat']
+            else:
+                self.timeStampFormat = '%Y-%m-%d %H:%M:%S'
+                self.nv['timeStampFormat'] = '%Y-%m-%d %H:%M:%S'
+        except Exception as e:
+            self.PutModule("Loading settings failed, check your config. Error: %s" % e)
+
+    def getBool(self, bString):
+        return bString.lower() in ("true", "yes", "on", "1")
+
+
     def globmatch(self, string, compare):
         escaped = self.globpattern.sub("[\g<1>]", compare)
         return fnmatch.fnmatch(string, escaped)
+
