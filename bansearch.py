@@ -135,6 +135,10 @@ class bansearch(znc.Module):
                         extban = ban.split(':')[1]
                         if self.globmatch(user[4], extban):
                             self.printban(user, chan, ban, True, type, stamp, setter)
+                    elif "$r" in ban:
+                        extban = ban.split(':')[1]
+                        if self.globmatch(user[3], extban):
+                            self.printban(user, chan, ban, True, type, stamp, setter)
 
     def formatTimestamp(self, when):
         ts = int(when)
